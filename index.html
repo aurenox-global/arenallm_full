@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arena LLM — Comparador de Modelos</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.1.0/300.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.1.0/400.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.1.0/500.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.1.0/600.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.1.0/700.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.1.0/800.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.1.0/400.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        :root {
+            --bg: #0a0a0f;
+            --surface: #12121a;
+            --surface2: #1a1a28;
+            --border: #2a2a3d;
+            --accent: #7c5cfc;
+            --accent2: #5c8cfc;
+            --accent3: #fc5c8c;
+            --text: #e8e8f0;
+            --text2: #9090a8;
+        }
+        body { background: var(--bg); color: var(--text); }
+        .gradient-text {
+            background: linear-gradient(135deg, #7c5cfc, #5c8cfc, #5cc8fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-text2 {
+            background: linear-gradient(135deg, #fc5c8c, #fc8c5c, #fcd85c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .card-glass {
+            background: rgba(18, 18, 26, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+        }
+        .card-glass:hover {
+            border-color: rgba(124, 92, 252, 0.4);
+            box-shadow: 0 0 30px rgba(124, 92, 252, 0.1);
+        }
+        .glow { box-shadow: 0 0 40px rgba(124, 92, 252, 0.15); }
+        .btn-primary {
+            background: linear-gradient(135deg, #7c5cfc, #5c8cfc);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(124, 92, 252, 0.35);
+        }
+        .model-select {
+            background: var(--surface2);
+            border: 2px solid var(--border);
+            color: var(--text);
+            transition: all 0.3s ease;
+        }
+        .model-select:focus {
+            border-color: var(--accent);
+            outline: none;
+            box-shadow: 0 0 20px rgba(124, 92, 252, 0.2);
+        }
+        .model-select option {
+            background: var(--surface);
+            color: var(--text);
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .badge-coder { background: rgba(92, 200, 252, 0.15); color: #5cc8fc; border: 1px solid rgba(92, 200, 252, 0.3); }
+        .badge-reasoning { background: rgba(252, 92, 140, 0.15); color: #fc5c8c; border: 1px solid rgba(252, 92, 140, 0.3); }
+        .badge-general { background: rgba(124, 92, 252, 0.15); color: #a78bfa; border: 1px solid rgba(124, 92, 252, 0.3); }
+        .badge-math { background: rgba(252, 200, 92, 0.15); color: #fcd85c; border: 1px solid rgba(252, 200, 92, 0.3); }
+        .badge-light { background: rgba(92, 252, 140, 0.15); color: #5cfc8c; border: 1px solid rgba(92, 252, 140, 0.3); }
+        .badge-vision { background: rgba(252, 140, 92, 0.15); color: #fc8c5c; border: 1px solid rgba(252, 140, 92, 0.3); }
+        .stat-bar {
+            height: 6px;
+            border-radius: 3px;
+            background: var(--surface2);
+            overflow: hidden;
+        }
+        .stat-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 1s ease;
+        }
+        .vs-divider {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7c5cfc, #fc5c8c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.2rem;
+            box-shadow: 0 0 30px rgba(124, 92, 252, 0.3);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .model-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .model-card.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 30px rgba(124, 92, 252, 0.2);
+        }
+        .model-card.selected .check-icon { opacity: 1; }
+        .check-icon { opacity: 0; transition: opacity 0.3s ease; }
+        .tab-btn {
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text2);
+        }
+        .tab-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+        .tab-btn:hover:not(.active) {
+            background: var(--surface2);
+            color: var(--text);
+        }
+        .animate-in {
+            animation: fadeInUp 0.6s ease forwards;
+            opacity: 0;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #5cfc8c;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.5); }
+        }
+        .comparison-row:nth-child(even) { background: rgba(26, 26, 40, 0.3); }
+        .comparison-row { transition: background 0.2s ease; }
+        .comparison-row:hover { background: rgba(124, 92, 252, 0.05); }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Navbar -->
+    <nav class="fixed top-0 left-0 right-0 z-50 card-glass border-b border-[#2a2a3d]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7c5cfc] to-[#5c8cfc] flex items-center justify-center">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <span class="text-lg font-bold">Arena<span class="gradient-text">LLM</span></span>
+                    <div class="flex items-center gap-1 ml-2">
+                        <div class="pulse-dot"></div>
+                        <span class="text-xs text-[#5cfc8c]">22 modelos</span>
+                    </div>
+                </div>
+                <div class="hidden sm:flex items-center gap-4">
+                    <button onclick="scrollToSection('models')" class="text-sm text-[#9090a8] hover:text-white transition-colors">Modelos</button>
+                    <button onclick="scrollToSection('compare')" class="text-sm text-[#9090a8] hover:text-white transition-colors">Comparar</button>
+                    <button onclick="scrollToSection('leaderboard')" class="text-sm text-[#9090a8] hover:text-white transition-colors">Ranking</button>
+                    <button onclick="scrollToSection('analysis')" class="text-sm text-[#9090a8] hover:text-white transition-colors">Análisis</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="pt-32 pb-16 px-4">
+        <div class="max-w-5xl mx-auto text-center">
+            <div class="animate-in" style="animation-delay: 0.1s">
+                <span class="badge badge-general text-xs mb-4">⚡ Comparador Open Source</span>
+            </div>
+            <h1 class="animate-in text-4xl sm:text-6xl font-extrabold mt-4 leading-tight" style="animation-delay: 0.2s">
+                Compara <span class="gradient-text">22 Modelos LLM</span><br>
+                <span class="gradient-text2">en una sola Arena</span>
+            </h1>
+            <p class="animate-in text-[#9090a8] text-lg mt-6 max-w-2xl mx-auto" style="animation-delay: 0.3s">
+                Evalúa capacidades de codificación, razonamiento, matemáticas y más. Compara modelos 1 vs 1 con gráficas interactivas para encontrar el modelo perfecto para tu caso de uso.
+            </p>
+            <div class="animate-in flex flex-wrap justify-center gap-3 mt-8" style="animation-delay: 0.4s">
+                <button onclick="scrollToSection('compare')" class="btn-primary px-6 py-3 rounded-xl font-semibold text-white flex items-center gap-2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.5 3.5 0 0014 19H9a3.5 3.5 0 00-2.45-1.453l-.548-.547z"/></svg>
+                    Empezar a Comparar
+                </button>
+                <button onclick="scrollToSection('leaderboard')" class="px-6 py-3 rounded-xl font-semibold border border-[#2a2a3d] hover:border-[#7c5cfc] transition-all">
+                    Ver Ranking Completo
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Model Cards Grid -->
+    <section id="models" class="py-12 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold">Todos los Modelos</h2>
+                    <p class="text-[#9090a8] text-sm mt-1">Haz clic en un modelo para seleccionarlo y comparar</p>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="filterModels('all')" class="filter-btn active px-3 py-1.5 rounded-lg text-xs font-medium bg-[#7c5cfc] text-white" data-filter="all">Todos</button>
+                    <button onclick="filterModels('coder')" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1a1a28] text-[#9090a8]" data-filter="coder">🧑‍💻 Coder</button>
+                    <button onclick="filterModels('reasoning')" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1a1a28] text-[#9090a8]" data-filter="reasoning">🧠 Reasoning</button>
+                    <button onclick="filterModels('general')" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1a1a28] text-[#9090a8]" data-filter="general">💬 General</button>
+                    <button onclick="filterModels('light')" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1a1a28] text-[#9090a8]" data-filter="light">⚡ Ligero</button>
+                </div>
+            </div>
+            <div id="modelGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <!-- Cards rendered by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Section -->
+    <section id="compare" class="py-12 px-4">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-2xl font-bold mb-8 text-center">Comparador 1 vs 1</h2>
+            
+            <div class="flex flex-col md:flex-row items-center gap-4 mb-8">
+                <div class="flex-1 w-full">
+                    <label class="text-xs text-[#9090a8] mb-1 block font-medium">Modelo A</label>
+                    <select id="modelA" class="model-select w-full p-3 rounded-xl text-sm" onchange="updateComparison()">
+                    </select>
+                </div>
+                <div class="vs-divider flex-shrink-0">VS</div>
+                <div class="flex-1 w-full">
+                    <label class="text-xs text-[#9090a8] mb-1 block font-medium">Modelo B</label>
+                    <select id="modelB" class="model-select w-full p-3 rounded-xl text-sm" onchange="updateComparison()">
+                    </select>
+                </div>
+                <button onclick="updateComparison()" class="btn-primary px-6 py-3 rounded-xl font-semibold text-white flex-shrink-0 mt-4 md:mt-6">
+                    Comparar
+                </button>
+            </div>
+
+            <!-- Comparison Results -->
+            <div id="comparisonResults" class="hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <div class="card-glass rounded-2xl p-6">
+                        <h3 class="text-lg font-bold mb-4 text-center">Radar de Capacidades</h3>
+                        <div class="chart-container">
+                            <canvas id="radarChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card-glass rounded-2xl p-6">
+                        <h3 class="text-lg font-bold mb-4 text-center">Rendimiento por Categoría</h3>
+                        <div class="chart-container">
+                            <canvas id="barChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Comparison Table -->
+                <div class="card-glass rounded-2xl p-6 mb-6">
+                    <h3 class="text-lg font-bold mb-4">Tabla Comparativa Detallada</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-[#2a2a3d]">
+                                    <th class="text-left py-3 px-4 text-[#9090a8] font-medium">Métrica</th>
+                                    <th id="tableHeaderA" class="text-center py-3 px-4 font-semibold"></th>
+                                    <th class="text-center py-3 px-4 text-[#9090a8] font-medium">Diferencia</th>
+                                    <th id="tableHeaderB" class="text-center py-3 px-4 font-semibold"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="comparisonTable">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Strengths -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="card-glass rounded-2xl p-6" id="strengthsA">
+                    </div>
+                    <div class="card-glass rounded-2xl p-6" id="strengthsB">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Leaderboard -->
+    <section id="leaderboard" class="py-12 px-4">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-2xl font-bold mb-2">🏆 Ranking General</h2>
+            <p class="text-[#9090a8] text-sm mb-8">Puntuación compuesta basada en múltiples benchmarks</p>
+            
+            <div class="card-glass rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm" id="leaderboardTable">
+                        <thead>
+                            <tr class="border-b border-[#2a2a3d] bg-[#1a1a28]">
+                                <th class="text-left py-4 px-4">#</th>
+                                <th class="text-left py-4 px-4">Modelo</th>
+                                <th class="text-center py-4 px-4">Params</th>
+                                <th class="text-center py-4 px-4">Score</th>
+                                <th class="text-center py-4 px-4 hidden sm:table-cell">Code</th>
+                                <th class="text-center py-4 px-4 hidden sm:table-cell">Math</th>
+                                <th class="text-center py-4 px-4 hidden sm:table-cell">Reason</th>
+                                <th class="text-center py-4 px-4 hidden md:table-cell">NLP</th>
+                                <th class="text-center py-4 px-4 hidden md:table-cell">EF</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Analysis Charts -->
+    <section id="analysis" class="py-12 px-4">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-2xl font-bold mb-8 text-center">Análisis de Capacidades</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="card-glass rounded-2xl p-6">
+                    <h3 class="text-lg font-bold mb-4">Top 10 — Rendimiento General</h3>
+                    <div class="chart-container" style="max-width:100%">
+                        <canvas id="topBarChart"></canvas>
+                    </div>
+                </div>
+                <div class="card-glass rounded-2xl p-6">
+                    <h3 class="text-lg font-bold mb-4">Eficiencia por Parámetro (Score/B)</h3>
+                    <div class="chart-container" style="max-width:100%">
+                        <canvas id="efficiencyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="card-glass rounded-2xl p-6">
+                    <h3 class="text-lg font-bold mb-4">Categorías por Tipo de Modelo</h3>
+                    <div class="chart-container" style="max-width:100%">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+                <div class="card-glass rounded-2xl p-6">
+                    <h3 class="text-lg font-bold mb-4">Score vs Parámetros (Scatter)</h3>
+                    <div class="chart-container" style="max-width:100%">
+                        <canvas id="scatterChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Use Case Recommendations -->
+            <div class="card-glass rounded-2xl p-6">
+                <h3 class="text-lg font-bold mb-6">🎯 Recomendaciones por Caso de Uso</h3>
+                <div id="useCases" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 px-4 border-t border-[#2a2a3d] mt-12">
+        <div class="max-w-5xl mx-auto text-center">
+            <p class="text-[#9090a8] text-sm">
+                ArenaLLM — Comparador de Modelos LLM Open Source<br>
+                <span class="text-xs mt-1 block">Datos basados en benchmarks públicos y evaluaciones comunitarias. Los puntajes son aproximaciones orientativas.</span>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+    // ===================== MODEL DATA =====================
+    const models = [
+        {
+            id: 'qwen25-3b', name: 'Qwen2.5-3B', family: 'Qwen', params: 3, type: 'general',
+            badge: 'General', badgeClass: 'badge-general',
+            desc: 'Modelo compacto de Alibaba con buen rendimiento general. Ideal para dispositivos con recursos limitados.',
+            highlights: 'Chat fluido, buen conocimiento general, rápido',
+            bestFor: 'Chatbots ligeros, asistentes personales, edge devices',
+            scores: { code: 52, math: 48, reasoning: 45, nlp: 62, efficiency: 88, instruction: 58, multilingual: 65, creativity: 42 },
+            overall: 57.5
+        },
+        {
+            id: 'qwen25-7b', name: 'Qwen2.5-7B', family: 'Qwen', params: 7, type: 'general',
+            badge: 'General', badgeClass: 'badge-general',
+            desc: 'Versión más potente del Qwen2.5 con capacidades mejoradas en todas las áreas.',
+            highlights: 'Balance excelente, multilingüe fuerte, buena razonamiento',
+            bestFor: 'Asistentes generales, generación de contenido, traducción',
+            scores: { code: 65, math: 62, reasoning: 60, nlp: 74, efficiency: 72, instruction: 70, multilingual: 78, creativity: 58 },
+            overall: 67.4
+        },
+        {
+            id: 'qwen25-coder-3b', name: 'Qwen2.5-Coder-3B', family: 'Qwen', params: 3, type: 'coder',
+            badge: 'Coder', badgeClass: 'badge-coder',
+            desc: 'Especializado en código con entrenamiento intensivo en repositorios de GitHub.',
+            highlights: 'Excelente para su tamaño en código, soporta 100+ lenguajes',
+            bestFor: 'Autocompletado de código, corrección de bugs, pequeños scripts',
+            scores: { code: 72, math: 45, reasoning: 42, nlp: 52, efficiency: 90, instruction: 60, multilingual: 55, creativity: 35 },
+            overall: 56.4
+        },
+        {
+            id: 'qwen25-coder-7b', name: 'Qwen2.5-Coder-7B', family: 'Qwen', params: 7, type: 'coder',
+            badge: 'Coder', badgeClass: 'badge-coder',
+            desc: 'El mejor modelo de codificación en su rango de tamaño. Competitivo con modelos mucho más grandes.',
+            highlights: 'Top en coding para 7B, debugging, refactoring, generación',
+            bestFor: 'IDE assistants, code review, generación de código complejo',
+            scores: { code: 82, math: 58, reasoning: 55, nlp: 60, efficiency: 75, instruction: 72, multilingual: 58, creativity: 45 },
+            overall: 63.1
+        },
+        {
+            id: 'qwen3-4b', name: 'Qwen3-4B', family: 'Qwen', params: 4, type: 'general',
+            badge: 'General', badgeClass: 'badge-general',
+            desc: 'Nueva generación Qwen3 con arquitectura mejorada y mejor eficiencia.',
+            highlights: 'Mejor ratio rendimiento/params, reasoning mejorado, más preciso',
+            bestFor: 'Edge AI, asistentes móviles, aplicaciones con recursos limitados',
+            scores: { code: 60, math: 58, reasoning: 56, nlp: 70, efficiency: 82, instruction: 66, multilingual: 72, creativity: 50 },
+            overall: 64.3
+        },
+        {
+            id: 'qwen3-8b', name: 'Qwen3-8B', family: 'Qwen', params: 8, type: 'general',
+            badge: 'General', badgeClass: 'badge-general',
+            desc: 'Modelo de 8B de nueva generación con capacidades sobresalientes en todas las métricas.',
+            highlights: 'Razonamiento superior, excelente en follow-up, multi-turno',
+            bestFor: 'Asistentes avanzados, análisis de datos, generación de texto largo',
+            scores: { code: 74, math: 72, reasoning: 70, nlp: 82, efficiency: 65, instruction: 80, multilingual: 84, creativity: 68 },
+            overall: 74.4
+        },
+        {
+            id: 'qwen35-4b', name: 'Qwen3.5-4B', family: 'Qwen', params: 4, type: 'general',
+            badge: 'General', badgeClass: 'badge-general',
+            desc: 'Actualización intermedia con mejoras significativas en reasoning y código.',
+            highlights: 'Gran mejora en lógica, mejor comprensión de contexto',
+            bestFor: 'Aplicaciones que necesitan buen reasoning con pocos recursos',
+            scores: { code: 64, math: 62, reasoning: 60, nlp: 72, efficiency: 84, instruction: 68, multilingual: 74, creativity: 52 },
+            overall: 67.0
+        },
+        {
+            id: 'qwen35-9b', name: 'Qwen3.5-9B', family: 'Qwen', params: 9, type: 'general',
+            badge: 'General', badgeClass: 'badge-general',
+            desc: 'El más grande de la serie Qwen3.5 con rendimiento cercano a modelos de 13B.',
+            highlights: 'Excelente en todo, especialmente razonamiento complejo y código',
+            bestFor: 'Tareas complejas, análisis profundo, generación de contenido profesional',
+            scores: { code: 78, math: 76, reasoning: 74, nlp: 84, efficiency: 60, instruction: 82, multilingual: 86, creativity: 72 },
+            overall: 76.5
+        },
+        {
+            id: 'llama32-3b', name: 'Llama3.2-3B', family: 'Llama', params: 3, type: 'general',
+            badge: 'General', badgeClass: 'badge-general',
+            desc: 'Modelo ligero de Meta optimizado para eficiencia con buen rendimiento general.',
+            highlights: 'Ecosistema Meta, buena alineación, eficiente en inferencia',
+            bestFor: 'Prototipado rápido, edge computing, fine-tuning personalizado',
+            scores: { code: 48, math: 44, reasoning: 42, nlp: 58, efficiency: 92, instruction: 55, multilingual: 50, creativity: 40 },
+            overall: 51.1
+        },
+        {
+            id: 'llama31-8b', name: 'Llama3.1-8B', family: 'Llama', params: 8, type: 'general',
+            badge: 'General', badgeClass: 'badge-general',
+            desc: 'Referencia del ecosistema open-source con amplio soporte comunitario y herramientas.',
+            highlights: 'Gran comunidad, buen balance, herramientas disponibles',
+            bestFor: 'Investigación, fine-tuning, aplicaciones empresariales',
+            scores: { code: 62, math: 56, reasoning: 58, nlp: 72, efficiency: 68, instruction: 68, multilingual: 62, creativity: 55 },
+            overall: 62.6
+        },
+        {
+            id: 'smollm3-3b', name: 'SmolLM3-3B', family: 'SmolLM', params: 3, type: 'light',
+            badge: 'Ligero', badgeClass: 'badge-light',
+            desc: 'Modelo ultra-compacto de Hugging Face optimizado para máxima eficiencia.',
+            highlights: 'Muy ligero, rápido, ideal para dispositivos IoT y móviles',
+            bestFor: 'IoT, móviles, microservicios, clasificación de texto',
+            scores: { code: 42, math: 38, reasoning: 35, nlp: 50, efficiency: 96, instruction: 48, multilingual: 40, creativity: 32 },
+            overall: 45.1
+        },
+        {
+            id: 'helium-2b', name: 'Helium-2B', family: 'Helium', params: 2, type: 'light',
+            badge: 'Ligero', badgeClass: 'badge-light',
+            desc: 'Modelo de solo 2B parámetros sorprendentemente capaz para su tamaño.',
+            highlights: 'Ultra ligero, rápido como el rayo, consumo mínimo de RAM',
+            bestFor: 'Clasificación, extracción de entidades, dispositivos con <4GB RAM',
+            scores: { code: 35, math: 32, reasoning: 30, nlp: 45, efficiency: 98, instruction: 42, multilingual: 35, creativity: 28 },
+            overall: 38.1
+        },
+        {
+            id: 'qwen3-4b-thinking', name: 'Qwen3-4B-Thinking', family: 'Qwen', params: 4, type: 'reasoning',
+            badge: 'Reasoning', badgeClass: 'badge-reasoning',
+            desc: 'Versión de Qwen3 optimizada para chain-of-thought y razonamiento profundo.',
+            highlights: 'Excelente razonamiento paso a paso, resolución de problemas lógicos',
+            bestFor: 'Problemas de lógica, matemáticas, análisis paso a paso, planificación',
+            scores: { code: 58, math: 72, reasoning: 78, nlp: 65, efficiency: 78, instruction: 70, multilingual: 68, creativity: 55 },
+            overall: 68.0
+        },
+        {
+            id: 'phi35-mini', name: 'Phi-3.5 Mini', family: 'Phi', params: 3.8, type: 'general',
+            badge: 'General', badgeClass: 'badge-general',
+            desc: 'Modelo compacto de Microsoft con rendimiento excepcional para su tamaño gracias a datos de alta calidad.',
+            highlights: 'Datos de alta calidad, buen razonamiento, eficiente',
+            bestFor: 'Análisis de texto, asistentes, clasificación, extracción',
+            scores: { code: 55, math: 52, reasoning: 54, nlp: 68, efficiency: 85, instruction: 64, multilingual: 55, creativity: 48 },
+            overall: 60.1
+        },
+        {
+            id: 'gemma3-4b', name: 'Gemma3-4B', family: 'Gemma', params: 4, type: 'general',
+            badge: 'General', badgeClass: 'badge-general',
+            desc: 'Modelo de Google basado en la arquitectura Gemini, optimizado para ser ligero.',
+            highlights: 'Buena comprensión, eficiente, buen ecosistema Google',
+            bestFor: 'Integración con servicios Google, asistentes, búsqueda semántica',
+            scores: { code: 56, math: 54, reasoning: 52, nlp: 70, efficiency: 82, instruction: 62, multilingual: 65, creativity: 50 },
+            overall: 61.4
+        },
+        {
+            id: 'gemma4-e2b', name: 'Gemma4-e2B', family: 'Gemma', params: 2, type: 'light',
+            badge: 'Ligero', badgeClass: 'badge-light',
+            desc: 'Versión expert-2B de Gemma4, extremadamente eficiente con arquitectura MoE.',
+            highlights: 'MoE eficiente, solo activa pocos parámetros, muy rápido',
+            bestFor: 'Edge AI extremo, clasificación rápida, filtros de contenido',
+            scores: { code: 38, math: 34, reasoning: 32, nlp: 48, efficiency: 97, instruction: 45, multilingual: 42, creativity: 30 },
+            overall: 42.0
+        },
+        {
+            id: 'gemma4-e4b', name: 'Gemma4-e4B', family: 'Gemma', params: 4, type: 'general',
+            badge: 'General', badgeClass: 'badge-general',
+            desc: 'Versión expert-4B con arquitectura MoE para mejor rendimiento por watt.',
+            highlights: 'MoE balanceado, buena eficiencia, rendimiento superior al denso 4B',
+            bestFor: 'Servidores edge, microservicios inteligentes, procesamiento de texto',
+            scores: { code: 60, math: 58, reasoning: 56, nlp: 72, efficiency: 86, instruction: 66, multilingual: 68, creativity: 52 },
+            overall: 64.8
+        },
+        {
+            id: 'mistral3-7b', name: 'Mistral3-7B', family: 'Mistral', params: 7, type: 'general',
+            badge: 'General', badgeClass: 'badge-general',
+            desc: 'Nueva generación de Mistral con mejoras en razonamiento y capacidad de seguir instrucciones.',
+            highlights: 'Excelente seguimiento de instrucciones, buen razonamiento, multilingüe',
+            bestFor: 'Chatbots empresariales, análisis de documentos, extracción de datos',
+            scores: { code: 68, math: 60, reasoning: 65, nlp: 76, efficiency: 70, instruction: 78, multilingual: 72, creativity: 62 },
+            overall: 68.9
+        },
+        {
+            id: 'glm4-9b', name: 'GLM-4-9B-Chat', family: 'GLM', params: 9, type: 'general',
+            badge: 'General', badgeClass: 'badge-general',
+            desc: 'Modelo de Zhipu AI con fuerte capacidad multilingüe especialmente en chino e inglés.',
+            highlights: 'Fuerte en chino-inglés, buen razonamiento, contexto largo',
+            bestFor: 'Aplicaciones bilingües, análisis de texto largo, chat multilingüe',
+            scores: { code: 66, math: 64, reasoning: 62, nlp: 78, efficiency: 58, instruction: 74, multilingual: 82, creativity: 60 },
+            overall: 68.0
+        },
+        {
+            id: 'deepseek-r1-llama8b', name: 'DeepSeek-R1-Distill-Llama-8B', family: 'DeepSeek', params: 8, type: 'reasoning',
+            badge: 'Reasoning', badgeClass: 'badge-reasoning',
+            desc: 'Destilado de DeepSeek-R1 sobre Llama-8B con capacidades avanzadas de razonamiento.',
+            highlights: 'Reasoning estilo R1, chain-of-thought, resolución de problemas complejos',
+            bestFor: 'Problemas matemáticos, lógica, planificación, análisis complejo',
+            scores: { code: 68, math: 78, reasoning: 82, nlp: 72, efficiency: 62, instruction: 76, multilingual: 65, creativity: 60 },
+            overall: 70.4
+        },
+        {
+            id: 'deepseek-r1-qwen7b', name: 'DeepSeek-R1-Distill-Qwen-7B', family: 'DeepSeek', params: 7, type: 'reasoning',
+            badge: 'Reasoning', badgeClass: 'badge-reasoning',
+            desc: 'Destilado de DeepSeek-R1 sobre Qwen-7B, combinando razonamiento R1 con la base Qwen.',
+            highlights: 'Reasoning avanzado + base Qwen fuerte, excelente en STEM',
+            bestFor: 'STEM, investigación, resolución de problemas técnicos',
+            scores: { code: 72, math: 80, reasoning: 84, nlp: 70, efficiency: 68, instruction: 78, multilingual: 72, creativity: 58 },
+            overall: 72.8
+        },
+        {
+            id: 'deepseek-r1-qwen3-8b', name: 'DeepSeek-R1-0528-Qwen3-8B', family: 'DeepSeek', params: 8, type: 'reasoning',
+            badge: 'Reasoning', badgeClass: 'badge-reasoning',
+            desc: 'La versión más avanzada de DeepSeek-R1, destilada sobre Qwen3-8B con la última versión de entrenamiento.',
+            highlights: 'Top reasoning en sub-10B, chain-of-thought profundo, mejor matemáticas',
+            bestFor: 'Tareas de razonamiento complejo, matemáticas avanzadas, código analítico',
+            scores: { code: 76, math: 84, reasoning: 88, nlp: 78, efficiency: 60, instruction: 82, multilingual: 80, creativity: 66 },
+            overall: 76.8
+        }
+    ];
+
+    // ===================== GLOBALS =====================
+    let radarChartInstance = null;
+    let barChartInstance = null;
+    let topBarChartInstance = null;
+    let efficiencyChartInstance = null;
+    let categoryChartInstance = null;
+    let scatterChartInstance = null;
+    let selectedModelA = null;
+    let selectedModelB = null;
+
+    // ===================== INIT =====================
+    document.addEventListener('DOMContentLoaded', () => {
+        renderModelGrid();
+        populateSelectors();
+        renderLeaderboard();
+        renderAnalysisCharts();
+        renderUseCases();
+    });
+
+    // ===================== MODEL GRID =====================
+    function renderModelGrid(filter = 'all') {
+        const grid = document.getElementById('modelGrid');
+        const filtered = filter === 'all' ? models : models.filter(m => m.type === filter);
+        
+        grid.innerHTML = filtered.map((m, i) => `
+            <div class="card-glass rounded-2xl p-5 model-card animate-in ${selectedModelA === m.id ? 'selected' : ''} ${selectedModelB === m.id ? 'selected' : ''}" 
+                 data-type="${m.type}" 
+                 data-id="${m.id}"
+                 style="animation-delay: ${i * 0.05}s"
+                 onclick="selectModelFromCard('${m.id}')">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-bold text-sm truncate">${m.name}</h3>
+                        <p class="text-xs text-[#9090a8] mt-0.5">${m.params}B parámetros · ${m.family}</p>
+                    </div>
+                    <div class="flex items-center gap-1 ml-2 flex-shrink-0">
+                        <span class="badge ${m.badgeClass}">${m.badge}</span>
+                        <svg class="check-icon w-5 h-5 text-[#7c5cfc]" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-xs text-[#9090a8] mb-3 line-clamp-2">${m.desc}</p>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-[#9090a8]">Overall</span>
+                        <span class="font-bold">${m.overall.toFixed(1)}</span>
+                    </div>
+                    <div class="stat-bar">
+                        <div class="stat-bar-fill" style="width: ${m.overall}%; background: linear-gradient(90deg, #7c5cfc, #5c8cfc)"></div>
+                    </div>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-1">
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-[#1a1a28] text-[#9090a8]">Code: ${m.scores.code}</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-[#1a1a28] text-[#9090a8]">Math: ${m.scores.math}</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-[#1a1a28] text-[#9090a8]">Reason: ${m.scores.reasoning}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function filterModels(filter) {
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active', 'bg-[#7c5cfc]', 'text-white');
+            btn.classList.add('bg-[#1a1a28]', 'text-[#9090a8]');
+        });
+        const activeBtn = document.querySelector(`.filter-btn[data-filter="${filter}"]`);
+        activeBtn.classList.add('active', 'bg-[#7c5cfc]', 'text-white');
+        activeBtn.classList.remove('bg-[#1a1a28]', 'text-[#9090a8]');
+        renderModelGrid(filter);
+    }
+
+    function selectModelFromCard(id) {
+        if (!selectedModelA || selectedModelA === id) {
+            selectedModelA = selectedModelA === id ? null : id;
+        } else if (!selectedModelB || selectedModelB === id) {
+            selectedModelB = selectedModelB === id ? null : id;
+        } else {
+            selectedModelA = id;
+            selectedModelB = null;
+        }
+        
+        if (selectedModelA) document.getElementById('modelA').value = selectedModelA;
+        if (selectedModelB) document.getElementById('modelB').value = selectedModelB;
+        
+        renderModelGrid(document.querySelector('.filter-btn.active')?.dataset.filter || 'all');
+        
+        if (selectedModelA && selectedModelB) {
+            updateComparison();
+            scrollToSection('compare');
+        }
+    }
+
+    // ===================== SELECTORS =====================
+    function populateSelectors() {
+        const selA = document.getElementById('modelA');
+        const selB = document.getElementById('modelB');
+        const options = models.map(m => `<option value="${m.id}">${m.name} (${m.params}B)</option>`).join('');
+        selA.innerHTML = '<option value="">Seleccionar modelo...</option>' + options;
+        selB.innerHTML = '<option value="">Seleccionar modelo...</option>' + options;
+        selA.value = 'qwen35-9b';
+        selB.value = 'deepseek-r1-qwen3-8b';
+    }
+
+    // ===================== COMPARISON =====================
+    function updateComparison() {
+        const idA = document.getElementById('modelA').value;
+        const idB = document.getElementById('modelB').value;
+        
+        if (!idA || !idB) return;
+        
+        const mA = models.find(m => m.id === idA);
+        const mB = models.find(m => m.id === idB);
+        if (!mA || !mB) return;
+
+        document.getElementById('comparisonResults').classList.remove('hidden');
+        
+        renderRadarChart(mA, mB);
+        renderBarComparison(mA, mB);
+        renderComparisonTable(mA, mB);
+        renderStrengths(mA, mB);
+    }
+
+    function renderRadarChart(mA, mB) {
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        if (radarChartInstance) radarChartInstance.destroy();
+        
+        radarChartInstance = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['Código', 'Matemáticas', 'Razonamiento', 'NLP', 'Eficiencia', 'Instrucción', 'Multilingüe', 'Creatividad'],
+                datasets: [
+                    {
+                        label: mA.name,
+                        data: [mA.scores.code, mA.scores.math, mA.scores.reasoning, mA.scores.nlp, mA.scores.efficiency, mA.scores.instruction, mA.scores.multilingual, mA.scores.creativity],
+                        borderColor: '#7c5cfc',
+                        backgroundColor: 'rgba(124, 92, 252, 0.15)',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#7c5cfc',
+                        pointRadius: 3
+                    },
+                    {
+                        label: mB.name,
+                        data: [mB.scores.code, mB.scores.math, mB.scores.reasoning, mB.scores.nlp, mB.scores.efficiency, mB.scores.instruction, mB.scores.multilingual, mB.scores.creativity],
+                        borderColor: '#fc5c8c',
+                        backgroundColor: 'rgba(252, 92, 140, 0.15)',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#fc5c8c',
+                        pointRadius: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: { stepSize: 20, color: '#9090a8', backdropColor: 'transparent', font: { size: 10 } },
+                        grid: { color: 'rgba(42, 42, 61, 0.5)' },
+                        angleLines: { color: 'rgba(42, 42, 61, 0.5)' },
+                        pointLabels: { color: '#e8e8f0', font: { size: 11 } }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#e8e8f0', font: { size: 12 }, usePointStyle: true, pointStyle: 'circle' }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderBarComparison(mA, mB) {
+        const ctx = document.getElementById('barChart').getContext('2d');
+        if (barChartInstance) barChartInstance.destroy();
+        
+        const categories = ['Código', 'Matemáticas', 'Razonamiento', 'NLP', 'Eficiencia', 'Instrucción', 'Multilingüe', 'Creatividad'];
+        const scoresA = [mA.scores.code, mA.scores.math, mA.scores.reasoning, mA.scores.nlp, mA.scores.efficiency, mA.scores.instruction, mA.scores.multilingual, mA.scores.creativity];
+        const scoresB = [mB.scores.code, mB.scores.math, mB.scores.reasoning, mB.scores.nlp, mB.scores.efficiency, mB.scores.instruction, mB.scores.multilingual, mB.scores.creativity];
+
+        barChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: categories,
+                datasets: [
+                    {
+                        label: mA.name,
+                        data: scoresA,
+                        backgroundColor: 'rgba(124, 92, 252, 0.7)',
+                        borderColor: '#7c5cfc',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    },
+                    {
+                        label: mB.name,
+                        data: scoresB,
+                        backgroundColor: 'rgba(252, 92, 140, 0.7)',
+                        borderColor: '#fc5c8c',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: { color: '#9090a8', font: { size: 10 } },
+                        grid: { color: 'rgba(42, 42, 61, 0.3)' }
+                    },
+                    x: {
+                        ticks: { color: '#e8e8f0', font: { size: 10 } },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#e8e8f0', font: { size: 11 }, usePointStyle: true }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderComparisonTable(mA, mB) {
+        document.getElementById('tableHeaderA').textContent = mA.name;
+        document.getElementById('tableHeaderA').style.color = '#7c5cfc';
+        document.getElementById('tableHeaderB').textContent = mB.name;
+        document.getElementById('tableHeaderB').style.color = '#fc5c8c';
+
+        const metrics = [
+            { key: 'code', label: '💻 Código', a: mA.scores.code, b: mB.scores.code },
+            { key: 'math', label: '🔢 Matemáticas', a: mA.scores.math, b: mB.scores.math },
+            { key: 'reasoning', label: '🧠 Razonamiento', a: mA.scores.reasoning, b: mB.scores.reasoning },
+            { key: 'nlp', label: '💬 NLP/Texto', a: mA.scores.nlp, b: mB.scores.nlp },
+            { key: 'efficiency', label: '⚡ Eficiencia', a: mA.scores.efficiency, b: mB.scores.efficiency },
+            { key: 'instruction', label: '📋 Instrucciones', a: mA.scores.instruction, b: mB.scores.instruction },
+            { key: 'multilingual', label: '🌍 Multilingüe', a: mA.scores.multilingual, b: mB.scores.multilingual },
+            { key: 'creativity', label: '🎨 Creatividad', a: mA.scores.creativity, b: mB.scores.creativity },
+            { key: 'overall', label: '🏆 Overall', a: mA.overall, b: mB.overall }
+        ];
+
+        const tbody = document.getElementById('comparisonTable');
+        tbody.innerHTML = metrics.map((met, i) => {
+            const diff = met.a - met.b;
+            const diffStr = diff > 0 ? `+${diff.toFixed(1)}` : diff.toFixed(1);
+            const diffColor = diff > 0 ? '#5cfc8c' : diff < 0 ? '#fc5c5c' : '#9090a8';
+            const winnerA = met.a > met.b;
+            const winnerB = met.b > met.a;
+            
+            return `
+                <tr class="comparison-row border-b border-[#2a2a3d]/30">
+                    <td class="py-3 px-4 font-medium">${met.label}</td>
+                    <td class="py-3 px-4 text-center font-bold ${winnerA ? 'text-[#7c5cfc]' : ''}">${met.a.toFixed(1)}</td>
+                    <td class="py-3 px-4 text-center mono text-sm" style="color: ${diffColor}">${diffStr}</td>
+                    <td class="py-3 px-4 text-center font-bold ${winnerB ? 'text-[#fc5c8c]' : ''}">${met.b.toFixed(1)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function renderStrengths(mA, mB) {
+        const containerA = document.getElementById('strengthsA');
+        const containerB = document.getElementById('strengthsB');
+        
+        const getSortedScores = (m) => Object.entries(m.scores).sort((a, b) => b[1] - a[1]);
+        const labels = { code: '💻 Código', math: '🔢 Matemáticas', reasoning: '🧠 Razonamiento', nlp: '💬 NLP', efficiency: '⚡ Eficiencia', instruction: '📋 Instrucciones', multilingual: '🌍 Multilingüe', creativity: '🎨 Creatividad' };
+        
+        const topA = getSortedScores(mA).slice(0, 3);
+        const bottomA = getSortedScores(mA).slice(-2).reverse();
+        const topB = getSortedScores(mB).slice(0, 3);
+        const bottomB = getSortedScores(mB).slice(-2).reverse();
+
+        containerA.innerHTML = `
+            <h3 class="text-lg font-bold mb-3" style="color: #7c5cfc">${mA.name}</h3>
+            <p class="text-xs text-[#9090a8] mb-4">${mA.desc}</p>
+            <div class="mb-4">
+                <p class="text-xs font-semibold mb-2 text-[#5cfc8c]">✅ Fortalezas</p>
+                ${topA.map(([k, v]) => `
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <span class="text-xs">${labels[k]}</span>
+                        <div class="flex-1 stat-bar"><div class="stat-bar-fill" style="width: ${v}%; background: linear-gradient(90deg, #7c5cfc, #5c8cfc)"></div></div>
+                        <span class="text-xs font-bold">${v}</span>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="mb-4">
+                <p class="text-xs font-semibold mb-2 text-[#fc5c5c]">⚠️ Áreas débiles</p>
+                ${bottomA.map(([k, v]) => `
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <span class="text-xs">${labels[k]}</span>
+                        <div class="flex-1 stat-bar"><div class="stat-bar-fill" style="width: ${v}%; background: linear-gradient(90deg, #fc5c5c, #fc8c5c)"></div></div>
+                        <span class="text-xs font-bold">${v}</span>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="mt-3 p-3 rounded-lg bg-[#1a1a28]">
+                <p class="text-xs font-semibold mb-1">🎯 Ideal para:</p>
+                <p class="text-xs text-[#9090a8]">${mA.bestFor}</p>
+            </div>
+        `;
+
+        containerB.innerHTML = `
+            <h3 class="text-lg font-bold mb-3" style="color: #fc5c8c">${mB.name}</h3>
+            <p class="text-xs text-[#9090a8] mb-4">${mB.desc}</p>
+            <div class="mb-4">
+                <p class="text-xs font-semibold mb-2 text-[#5cfc8c]">✅ Fortalezas</p>
+                ${topB.map(([k, v]) => `
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <span class="text-xs">${labels[k]}</span>
+                        <div class="flex-1 stat-bar"><div class="stat-bar-fill" style="width: ${v}%; background: linear-gradient(90deg, #fc5c8c, #fc8c5c)"></div></div>
+                        <span class="text-xs font-bold">${v}</span>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="mb-4">
+                <p class="text-xs font-semibold mb-2 text-[#fc5c5c]">⚠️ Áreas débiles</p>
+                ${bottomB.map(([k, v]) => `
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <span class="text-xs">${labels[k]}</span>
+                        <div class="flex-1 stat-bar"><div class="stat-bar-fill" style="width: ${v}%; background: linear-gradient(90deg, #fc5c5c, #fc8c5c)"></div></div>
+                        <span class="text-xs font-bold">${v}</span>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="mt-3 p-3 rounded-lg bg-[#1a1a28]">
+                <p class="text-xs font-semibold mb-1">🎯 Ideal para:</p>
+                <p class="text-xs text-[#9090a8]">${mB.bestFor}</p>
+            </div>
+        `;
+    }
+
+    // ===================== LEADERBOARD =====================
+    function renderLeaderboard() {
+        const sorted = [...models].sort((a, b) => b.overall - a.overall);
+        const tbody = document.getElementById('leaderboardBody');
+        
+        tbody.innerHTML = sorted.map((m, i) => {
+            const rankBadge = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+            const scoreColor = m.overall >= 70 ? '#5cfc8c' : m.overall >= 60 ? '#fcd85c' : m.overall >= 50 ? '#fc8c5c' : '#fc5c5c';
+            
+            return `
+                <tr class="border-b border-[#2a2a3d]/30 comparison-row cursor-pointer" onclick="quickCompare('${m.id}')">
+                    <td class="py-3 px-4 font-bold">${rankBadge}</td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-center gap-2">
+                            <span class="font-semibold text-sm">${m.name}</span>
+                            <span class="badge ${m.badgeClass} hidden sm:inline-flex">${m.badge}</span>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 text-center mono text-sm">${m.params}B</td>
+                    <td class="py-3 px-4 text-center font-bold" style="color: ${scoreColor}">${m.overall.toFixed(1)}</td>
+                    <td class="py-3 px-4 text-center hidden sm:table-cell text-sm">${m.scores.code}</td>
+                    <td class="py-3 px-4 text-center hidden sm:table-cell text-sm">${m.scores.math}</td>
+                    <td class="py-3 px-4 text-center hidden sm:table-cell text-sm">${m.scores.reasoning}</td>
+                    <td class="py-3 px-4 text-center hidden md:table-cell text-sm">${m.scores.nlp}</td>
+                    <td class="py-3 px-4 text-center hidden md:table-cell text-sm">${m.scores.efficiency}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function quickCompare(id) {
+        if (!selectedModelA) {
+            selectedModelA = id;
+            document.getElementById('modelA').value = id;
+        } else if (!selectedModelB) {
+            selectedModelB = id;
+            document.getElementById('modelB').value = id;
+            updateComparison();
+            scrollToSection('compare');
+        } else {
+            selectedModelA = id;
+            selectedModelB = null;
+            document.getElementById('modelA').value = id;
+            document.getElementById('modelB').value = '';
+        }
+        renderModelGrid(document.querySelector('.filter-btn.active')?.dataset.filter || 'all');
+    }
+
+    // ===================== ANALYSIS CHARTS =====================
+    function renderAnalysisCharts() {
+        renderTopBarChart();
+        renderEfficiencyChart();
+        renderCategoryChart();
+        renderScatterChart();
+    }
+
+    function renderTopBarChart() {
+        const ctx = document.getElementById('topBarChart').getContext('2d');
+        if (topBarChartInstance) topBarChartInstance.destroy();
+        
+        const sorted = [...models].sort((a, b) => b.overall - a.overall).slice(0, 10);
+        
+        topBarChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sorted.map(m => m.name),
+                datasets: [{
+                    label: 'Score Overall',
+                    data: sorted.map(m => m.overall),
+                    backgroundColor: sorted.map((_, i) => {
+                        const colors = ['rgba(124, 92, 252, 0.8)', 'rgba(92, 140, 252, 0.8)', 'rgba(92, 200, 252, 0.8)', 'rgba(92, 252, 200, 0.8)', 'rgba(200, 252, 92, 0.8)', 'rgba(252, 252, 92, 0.8)', 'rgba(252, 200, 92, 0.8)', 'rgba(252, 140, 92, 0.8)', 'rgba(252, 92, 140, 0.8)', 'rgba(252, 92, 92, 0.8)'];
+                        return colors[i];
+                    }),
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: { color: '#9090a8', font: { size: 10 } },
+                        grid: { color: 'rgba(42, 42, 61, 0.3)' }
+                    },
+                    y: {
+                        ticks: { color: '#e8e8f0', font: { size: 10 } },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    function renderEfficiencyChart() {
+        const ctx = document.getElementById('efficiencyChart').getContext('2d');
+        if (efficiencyChartInstance) efficiencyChartInstance.destroy();
+        
+        const sorted = [...models].sort((a, b) => (b.overall / b.params) - (a.overall / a.params));
+        
+        efficiencyChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sorted.map(m => m.name),
+                datasets: [{
+                    label: 'Score por Billón de Parámetros',
+                    data: sorted.map(m => (m.overall / m.params).toFixed(1)),
+                    backgroundColor: sorted.map(m => {
+                        const ratio = m.overall / m.params;
+                        if (ratio > 15) return 'rgba(92, 252, 140, 0.7)';
+                        if (ratio > 12) return 'rgba(124, 92, 252, 0.7)';
+                        if (ratio > 10) return 'rgba(252, 200, 92, 0.7)';
+                        return 'rgba(252, 92, 140, 0.7)';
+                    }),
+                    borderRadius: 4,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#9090a8', font: { size: 10 } },
+                        grid: { color: 'rgba(42, 42, 61, 0.3)' }
+                    },
+                    x: {
+                        ticks: { color: '#e8e8f0', font: { size: 9 }, maxRotation: 45 },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    function renderCategoryChart() {
+        const ctx = document.getElementById('categoryChart').getContext('2d');
+        if (categoryChartInstance) categoryChartInstance.destroy();
+        
+        const families = {};
+        models.forEach(m => {
+            if (!families[m.family]) families[m.family] = { code: 0, math: 0, reasoning: 0, nlp: 0, count: 0 };
+            families[m.family].code += m.scores.code;
+            families[m.family].math += m.scores.math;
+            families[m.family].reasoning += m.scores.reasoning;
+            families[m.family].nlp += m.scores.nlp;
+            families[m.family].count++;
+        });
+
+        const familyNames = Object.keys(families);
+        const avgScores = familyNames.map(f => ({
+            name: f,
+            code: (families[f].code / families[f].count).toFixed(1),
+            math: (families[f].math / families[f].count).toFixed(1),
+            reasoning: (families[f].reasoning / families[f].count).toFixed(1),
+            nlp: (families[f].nlp / families[f].count).toFixed(1)
+        }));
+
+        categoryChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: avgScores.map(a => a.name),
+                datasets: [
+                    { label: 'Código', data: avgScores.map(a => a.code), backgroundColor: 'rgba(92, 200, 252, 0.7)', borderRadius: 3 },
+                    { label: 'Matemáticas', data: avgScores.map(a => a.math), backgroundColor: 'rgba(252, 200, 92, 0.7)', borderRadius: 3 },
+                    { label: 'Razonamiento', data: avgScores.map(a => a.reasoning), backgroundColor: 'rgba(252, 92, 140, 0.7)', borderRadius: 3 },
+                    { label: 'NLP', data: avgScores.map(a => a.nlp), backgroundColor: 'rgba(124, 92, 252, 0.7)', borderRadius: 3 }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: { color: '#9090a8', font: { size: 10 } },
+                        grid: { color: 'rgba(42, 42, 61, 0.3)' }
+                    },
+                    x: {
+                        ticks: { color: '#e8e8f0', font: { size: 11 } },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#e8e8f0', font: { size: 11 }, usePointStyle: true }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderScatterChart() {
+        const ctx = document.getElementById('scatterChart').getContext('2d');
+        if (scatterChartInstance) scatterChartInstance.destroy();
+        
+        const typeColors = {
+            general: '#7c5cfc',
+            coder: '#5cc8fc',
+            reasoning: '#fc5c8c',
+            light: '#5cfc8c'
+        };
+
+        const datasets = Object.keys(typeColors).map(type => ({
+            label: type.charAt(0).toUpperCase() + type.slice(1),
+            data: models.filter(m => m.type === type).map(m => ({ x: m.params, y: m.overall, model: m.name })),
+            backgroundColor: typeColors[type],
+            pointRadius: 6,
+            pointHoverRadius: 8
+        }));
+
+        scatterChartInstance = new Chart(ctx, {
+            type: 'scatter',
+            data: { datasets },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Parámetros (Billones)', color: '#e8e8f0', font: { size: 12 } },
+                        ticks: { color: '#9090a8', font: { size: 10 } },
+                        grid: { color: 'rgba(42, 42, 61, 0.3)' }
+                    },
+                    y: {
+                        title: { display: true, text: 'Score Overall', color: '#e8e8f0', font: { size: 12 } },
+                        ticks: { color: '#9090a8', font: { size: 10 } },
+                        grid: { color: 'rgba(42, 42, 61, 0.3)' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#e8e8f0', font: { size: 11 }, usePointStyle: true }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.raw.model}: ${context.raw.y} pts (${context.raw.x}B)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // ===================== USE CASES =====================
+    function renderUseCases() {
+        const useCases = [
+            {
+                icon: '💻',
+                title: 'Desarrollo de Software',
+                desc: 'Generación y corrección de código',
+                models: ['qwen25-coder-7b', 'deepseek-r1-qwen7b', 'deepseek-r1-qwen3-8b']
+            },
+            {
+                icon: '🧠',
+                title: 'Razonamiento Complejo',
+                desc: 'Problemas lógicos y matemáticos',
+                models: ['deepseek-r1-qwen3-8b', 'deepseek-r1-qwen7b', 'qwen3-4b-thinking']
+            },
+            {
+                icon: '📱',
+                title: 'Dispositivos Móviles',
+                desc: 'Edge computing y baja latencia',
+                models: ['smollm3-3b', 'helium-2b', 'gemma4-e2b']
+            },
+            {
+                icon: '💬',
+                title: 'Asistente Conversacional',
+                desc: 'Chat fluido y multilingüe',
+                models: ['qwen35-9b', 'qwen3-8b', 'mistral3-7b']
+            },
+            {
+                icon: '🔬',
+                title: 'Investigación & STEM',
+                desc: 'Análisis técnico y científico',
+                models: ['deepseek-r1-qwen3-8b', 'glm4-9b', 'qwen35-9b']
+            },
+            {
+                icon: '🎨',
+                title: 'Generación Creativa',
+                desc: 'Escritura creativa y contenido',
+                models: ['qwen35-9b', 'mistral3-7b', 'qwen3-8b']
+            },
+            {
+                icon: '📊',
+                title: 'Análisis de Datos',
+                desc: 'Extracción y procesamiento de información',
+                models: ['qwen3-8b', 'glm4-9b', 'phi35-mini']
+            },
+            {
+                icon: '🌍',
+                title: 'Traducción Multilingüe',
+                desc: 'Soporte para múltiples idiomas',
+                models: ['qwen35-9b', 'glm4-9b', 'qwen3-8b']
+            },
+            {
+                icon: '⚡',
+                title: 'Prototipado Rápido',
+                desc: 'Iteración rápida con buen rendimiento',
+                models: ['qwen3-4b', 'phi35-mini', 'gemma3-4b']
+            }
+        ];
+
+        const container = document.getElementById('useCases');
+        container.innerHTML = useCases.map(uc => {
+            const modelObjs = uc.models.map(id => models.find(m => m.id === id)).filter(Boolean);
+            return `
+                <div class="p-4 rounded-xl bg-[#1a1a28] border border-[#2a2a3d] hover:border-[#7c5cfc]/30 transition-all">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-xl">${uc.icon}</span>
+                        <div>
+                            <h4 class="font-bold text-sm">${uc.title}</h4>
+                            <p class="text-[10px] text-[#9090a8]">${uc.desc}</p>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5 mt-3">
+                        ${modelObjs.map(m => `
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-medium">${m.name}</span>
+                                <span class="text-xs mono" style="color: ${m.overall >= 70 ? '#5cfc8c' : m.overall >= 60 ? '#fcd85c' : '#fc8c5c'}">${m.overall.toFixed(1)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ===================== UTILITIES =====================
+    function scrollToSection(id) {
+        document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    </script>
+</body>
+</html>
+
